@@ -20,4 +20,9 @@ public class TreeStructure<T extends Comparable<T>> implements DataStructure<T> 
     public boolean search(T value) {
         return tree.contains(value);
     }
+
+    @Override
+    public void remove(T value) {
+        tree.remove(value);
+    }
 }

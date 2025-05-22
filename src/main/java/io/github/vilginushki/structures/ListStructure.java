@@ -21,4 +21,9 @@ public class ListStructure<T> implements DataStructure<T> {
     public boolean search(T value) {
         return list.contains(value);
     }
+
+    @Override
+    public void remove(T value) {
+        list.remove(value);
+    }
 }

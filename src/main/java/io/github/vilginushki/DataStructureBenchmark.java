@@ -1,8 +1,6 @@
 package io.github.vilginushki;
 
-import io.github.vilginushki.structures.ListStructure;
-import io.github.vilginushki.structures.SetStructure;
-import io.github.vilginushki.structures.TreeStructure;
+import io.github.vilginushki.structures.*;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -56,6 +54,7 @@ public class DataStructureBenchmark {
         Map<String, List<Double>> results = new HashMap<>();
         results.put("Insert Time", new ArrayList<>());
         results.put("Search Time", new ArrayList<>());
+        results.put("Remove Time", new ArrayList<>());
 
         for (int t = 0; t < trials; t++) {
             try {
@@ -69,8 +68,13 @@ public class DataStructureBenchmark {
                 for (T value : data) structure.search(value);
                 long endSearch = System.nanoTime();
 
+                long startRemove = System.nanoTime();
+                for (T value : data) structure.remove(value);
+                long endRemove = System.nanoTime();
+
                 results.get("Insert Time").add((endInsert - startInsert) / 1e6);
                 results.get("Search Time").add((endSearch - startSearch) / 1e6);
+                results.get("Remove Time").add((endRemove - startRemove) / 1e6);
             } catch (Exception e) {
                 System.err.println("Error during benchmarking: " + e.getMessage());
             }
@@ -78,77 +82,68 @@ public class DataStructureBenchmark {
         return results;
     }
 
-    public static void plotResults(String title, Map<String, List<Double>> listResults, Map<String, List<Double>> setResults, Map<String, List<Double>> treeResults) {
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+    public static void plotResults(String title, Map<String, Map<String, List<Double>>> allResults) {
+        for (String action : List.of("Insert Time", "Search Time", "Remove Time")) {
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
-        for (int i = 0; i < listResults.get("Insert Time").size(); i++) {
-            dataset.addValue(listResults.get("Insert Time").get(i), "ListStructure", "Trial " + (i + 1));
-            dataset.addValue(setResults.get("Insert Time").get(i), "SetStructure", "Trial " + (i + 1));
-            dataset.addValue(treeResults.get("Insert Time").get(i), "TreeStructure", "Trial " + (i + 1));
+            for (Map.Entry<String, Map<String, List<Double>>> entry : allResults.entrySet()) {
+                String structureName = entry.getKey();
+                List<Double> times = entry.getValue().get(action);
+
+                for (int i = 0; i < times.size(); i++) {
+                    dataset.addValue(times.get(i), structureName, "Trial " + (i + 1));
+                }
+            }
+
+            JFreeChart chart = ChartFactory.createLineChart(
+                    title + " - " + action,
+                    "Trial",
+                    "Time (ms)",
+                    dataset,
+                    PlotOrientation.VERTICAL,
+                    true,
+                    true,
+                    false
+            );
+
+            ChartPanel chartPanel = new ChartPanel(chart);
+            JFrame frame = new JFrame(title + " - " + action);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.getContentPane().add(chartPanel);
+            frame.pack();
+            frame.setVisible(true);
         }
-
-        JFreeChart chart = ChartFactory.createLineChart(
-                title + " - Insert Time",
-                "Trial",
-                "Time (ms)",
-                dataset,
-                PlotOrientation.VERTICAL,
-                true,
-                true,
-                false
-        );
-
-        ChartPanel chartPanel = new ChartPanel(chart);
-        JFrame frame = new JFrame(title + " - Insert Time");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().add(chartPanel);
-        frame.pack();
-        frame.setVisible(true);
-
-        // Plot Search Time
-        dataset.clear();
-        for (int i = 0; i < listResults.get("Search Time").size(); i++) {
-            dataset.addValue(listResults.get("Search Time").get(i), "ListStructure", "Trial " + (i + 1));
-            dataset.addValue(setResults.get("Search Time").get(i), "SetStructure", "Trial " + (i + 1));
-            dataset.addValue(treeResults.get("Search Time").get(i), "TreeStructure", "Trial " + (i + 1));
-        }
-
-        JFreeChart searchChart = ChartFactory.createLineChart(
-                title + " - Search Time",
-                "Trial",
-                "Time (ms)",
-                dataset,
-                PlotOrientation.VERTICAL,
-                true,
-                true,
-                false
-        );
-
-        ChartPanel searchChartPanel = new ChartPanel(searchChart);
-        JFrame searchFrame = new JFrame(title + " - Search Time");
-        searchFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        searchFrame.getContentPane().add(searchChartPanel);
-        searchFrame.pack();
-        searchFrame.setVisible(true);
     }
 
     public static void main(String[] args) {
         int dataSize = 100000;
         int trials = 5;
 
+        // Register all structures dynamically
+        Map<String, Class<? extends DataStructure>> structures = new LinkedHashMap<>();
+        structures.put("ListStructure", ListStructure.class);
+        structures.put("SetStructure", SetStructure.class);
+        structures.put("TreeStructure", TreeStructure.class);
+        structures.put("SkipListStructure", SkipListStructure.class);
+        structures.put("SkipGraphStructure", SkipGraphStructure.class);
+
         for (DataGenerationStrategy strategy : DataGenerationStrategy.values()) {
             System.out.println("\nStrategy: " + strategy);
             List<Integer> data = generateData(dataSize, strategy);
 
-            Map<String, List<Double>> listResults = benchmark(ListStructure.class, data, trials);
-            Map<String, List<Double>> setResults = benchmark(SetStructure.class, data, trials);
-            Map<String, List<Double>> treeResults = benchmark(TreeStructure.class, data, trials);
+            Map<String, Map<String, List<Double>>> allResults = new LinkedHashMap<>();
 
-            System.out.println("ListStructure: " + listResults);
-            System.out.println("SetStructure: " + setResults);
-            System.out.println("TreeStructure: " + treeResults);
+            for (Map.Entry<String, Class<? extends DataStructure>> entry : structures.entrySet()) {
+                String structureName = entry.getKey();
+                Class<? extends DataStructure> structureClass = entry.getValue();
 
-            plotResults("Benchmark Results - " + strategy, listResults, setResults, treeResults);
+                Map<String, List<Double>> results = benchmark(structureClass, data, trials);
+                allResults.put(structureName, results);
+
+                System.out.println(structureName + ": " + results);
+            }
+
+            plotResults("Benchmark Results - " + strategy, allResults);
         }
     }
 }

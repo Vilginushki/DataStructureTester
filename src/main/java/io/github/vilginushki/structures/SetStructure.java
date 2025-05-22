@@ -21,4 +21,9 @@ public class SetStructure<T> implements DataStructure<T> {
     public boolean search(T value) {
         return set.contains(value);
     }
+
+    @Override
+    public void remove(T value) {
+        set.remove(value);
+    }
 }
