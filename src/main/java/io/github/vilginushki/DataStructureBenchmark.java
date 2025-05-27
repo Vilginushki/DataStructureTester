@@ -126,6 +126,10 @@ public class DataStructureBenchmark {
         structures.put("TreeStructure", TreeStructure.class);
         structures.put("SkipListStructure", SkipListStructure.class);
         structures.put("SkipGraphStructure", SkipGraphStructure.class);
+        structures.put("DictionaryStructure", DictionaryStructure.class);
+        structures.put("HashTableStructure", HashTableStructure.class);
+        structures.put("HashSetStructure", HashSetStructure.class);
+        structures.put("SortedSetStructure", SortedSetStructure.class);
 
         for (DataGenerationStrategy strategy : DataGenerationStrategy.values()) {
             System.out.println("\nStrategy: " + strategy);
